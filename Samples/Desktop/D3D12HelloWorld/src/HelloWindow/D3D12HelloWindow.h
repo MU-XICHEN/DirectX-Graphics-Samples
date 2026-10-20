@@ -36,7 +36,7 @@ private:
     // Pipeline objects.
     ComPtr<IDXGISwapChain3> m_swapChain;
     ComPtr<ID3D12Device> m_device;
-    ComPtr<ID3D12Resource> m_renderTargets[FrameCount];
+    ComPtr<ID3D12Resource> m_renderTargets[FrameCount]; // m_renderTargets 是一个 COMPtr 的数组
     ComPtr<ID3D12CommandAllocator> m_commandAllocator;
     ComPtr<ID3D12CommandQueue> m_commandQueue;
     ComPtr<ID3D12DescriptorHeap> m_rtvHeap;

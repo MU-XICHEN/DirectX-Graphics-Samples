@@ -12,13 +12,18 @@
 #include "stdafx.h"
 #include "D3D12HelloWindow.h"
 
-extern "C" { __declspec(dllexport) extern const UINT D3D12SDKVersion = 618; }
-extern "C" { __declspec(dllexport) extern const char* D3D12SDKPath = u8".\\D3D12\\"; }
+extern "C"
+{
+    __declspec(dllexport) extern const UINT D3D12SDKVersion = 618;
+}
+extern "C"
+{
+    __declspec(dllexport) extern const char *D3D12SDKPath = u8".\\D3D12\\";
+}
 
-D3D12HelloWindow::D3D12HelloWindow(UINT width, UINT height, std::wstring name) :
-    DXSample(width, height, name),
-    m_frameIndex(0),
-    m_rtvDescriptorSize(0)
+D3D12HelloWindow::D3D12HelloWindow(UINT width, UINT height, std::wstring name) : DXSample(width, height, name),
+                                                                                 m_frameIndex(0),
+                                                                                 m_rtvDescriptorSize(0)
 {
 }
 
@@ -49,6 +54,9 @@ void D3D12HelloWindow::LoadPipeline()
 #endif
 
     ComPtr<IDXGIFactory4> factory;
+    // 有 IID_PPV_ARGS 这个就表示要往后面对应的指针写内容了，不是给指针里面的内容，是给指针本身
+    // 相当于不是使用者创建内存，传一个指针进去写入对应内存，而是由函数内部创建，然后再把地址设置为你给的指针变量
+    // 最终你拿到的指针和你传进去的指针的值已经不一样了
     ThrowIfFailed(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(&factory)));
 
     if (m_useWarpDevice)
@@ -59,8 +67,7 @@ void D3D12HelloWindow::LoadPipeline()
         ThrowIfFailed(D3D12CreateDevice(
             warpAdapter.Get(),
             D3D_FEATURE_LEVEL_11_0,
-            IID_PPV_ARGS(&m_device)
-            ));
+            IID_PPV_ARGS(&m_device)));
     }
     else
     {
@@ -70,8 +77,7 @@ void D3D12HelloWindow::LoadPipeline()
         ThrowIfFailed(D3D12CreateDevice(
             hardwareAdapter.Get(),
             D3D_FEATURE_LEVEL_11_0,
-            IID_PPV_ARGS(&m_device)
-            ));
+            IID_PPV_ARGS(&m_device)));
     }
 
     // Describe and create the command queue.
@@ -87,24 +93,23 @@ void D3D12HelloWindow::LoadPipeline()
     swapChainDesc.Width = m_width;
     swapChainDesc.Height = m_height;
     swapChainDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT; // 缓冲区将用作渲染目标输出
+    swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;    // 使用翻转丢弃交换效果
     swapChainDesc.SampleDesc.Count = 1;
 
     ComPtr<IDXGISwapChain1> swapChain;
     ThrowIfFailed(factory->CreateSwapChainForHwnd(
-        m_commandQueue.Get(),        // Swap chain needs the queue so that it can force a flush on it.
+        m_commandQueue.Get(), // Swap chain needs the queue so that it can force a flush on it.
         Win32Application::GetHwnd(),
         &swapChainDesc,
         nullptr,
         nullptr,
-        &swapChain
-        ));
+        &swapChain));
 
     // This sample does not support fullscreen transitions.
     ThrowIfFailed(factory->MakeWindowAssociation(Win32Application::GetHwnd(), DXGI_MWA_NO_ALT_ENTER));
 
-    ThrowIfFailed(swapChain.As(&m_swapChain));
+    ThrowIfFailed(swapChain.As(&m_swapChain)); // 应用 IDXGISwapChain3 接口到 m_swapChain
     m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 
     // Create descriptor heaps.
@@ -114,6 +119,7 @@ void D3D12HelloWindow::LoadPipeline()
         rtvHeapDesc.NumDescriptors = FrameCount;
         rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
         rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+        // 这里创建的是 描述符堆，具体的描述符还没有创建。每个描述符都会指向一个渲染目标资源 (Render Target)
         ThrowIfFailed(m_device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_rtvHeap)));
 
         m_rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -121,12 +127,15 @@ void D3D12HelloWindow::LoadPipeline()
 
     // Create frame resources.
     {
+        // rtvHandle 记录了准备写入描述符的槽位
         CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart());
 
         // Create a RTV for each frame.
         for (UINT n = 0; n < FrameCount; n++)
         {
+            // 将交换链的缓冲区接口存入 m_renderTargets 数组中
             ThrowIfFailed(m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTargets[n])));
+            // 为渲染目标创建一个渲染目标视图 (RTV) 描述符，写入描述符堆的指定槽位
             m_device->CreateRenderTargetView(m_renderTargets[n].Get(), nullptr, rtvHandle);
             rtvHandle.Offset(1, m_rtvDescriptorSize);
         }
@@ -171,7 +180,7 @@ void D3D12HelloWindow::OnRender()
     PopulateCommandList();
 
     // Execute the command list.
-    ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
+    ID3D12CommandList *ppCommandLists[] = {m_commandList.Get()};
     m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
     // Present the frame.
@@ -191,13 +200,13 @@ void D3D12HelloWindow::OnDestroy()
 
 void D3D12HelloWindow::PopulateCommandList()
 {
-    // Command list allocators can only be reset when the associated 
-    // command lists have finished execution on the GPU; apps should use 
+    // Command list allocators can only be reset when the associated
+    // command lists have finished execution on the GPU; apps should use
     // fences to determine GPU execution progress.
     ThrowIfFailed(m_commandAllocator->Reset());
 
-    // However, when ExecuteCommandList() is called on a particular command 
-    // list, that command list can then be reset at any time and must be before 
+    // However, when ExecuteCommandList() is called on a particular command
+    // list, that command list can then be reset at any time and must be before
     // re-recording.
     ThrowIfFailed(m_commandList->Reset(m_commandAllocator.Get(), m_pipelineState.Get()));
 
@@ -207,7 +216,7 @@ void D3D12HelloWindow::PopulateCommandList()
     CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIndex, m_rtvDescriptorSize);
 
     // Record commands.
-    const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+    const float clearColor[] = {0.0f, 0.2f, 0.4f, 1.0f};
     m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 
     // Indicate that the back buffer will now be used to present.
@@ -229,8 +238,10 @@ void D3D12HelloWindow::WaitForPreviousFrame()
     m_fenceValue++;
 
     // Wait until the previous frame is finished.
-    if (m_fence->GetCompletedValue() < fence)
+    if (m_fence->GetCompletedValue() < fence) // 如果已经完成，则跳过 wait
     {
+        // 当 m_fence 的完成值达到或超过 fence 时，将 m_fenceEvent 设为 “已触发”。
+        // 上面如果不额外设置一下的话，就没有地方来唤醒下方的阻塞了。
         ThrowIfFailed(m_fence->SetEventOnCompletion(fence, m_fenceEvent));
         WaitForSingleObject(m_fenceEvent, INFINITE);
     }
